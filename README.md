@@ -14,7 +14,7 @@ Without Google credentials the app shows bundled sample data (Aug–Sep 2026).
 1. **Google service account**: in Google Cloud, create a service account, enable the *Google Search Console API* and *Google Sheets API*, and download a JSON key.
    - Search Console → Settings → Users and permissions → add the service account's `client_email` (Restricted is enough).
    - Share the sheet with the same email as Viewer.
-2. **Metabase**: Admin → Settings → Authentication → API keys → create a key. Note the saved question's ID (the number in `/question/123-...`).
+2. **Metabase**: note the saved question's ID (the number in `/question/123-...`). For access, either ask an admin for an API key (Admin → Settings → Authentication → API keys), or set `METABASE_USERNAME` / `METABASE_PASSWORD` for any account that can open the question (email + password login; Google-only sign-in won't work).
    The question needs a landing URL column and a date column, one row per lead (an onboarding flag/count column is optional).
 3. **Vercel**: `vercel link`, then add every variable from `.env.example` with `vercel env add`, and deploy with `vercel deploy --prod`.
 

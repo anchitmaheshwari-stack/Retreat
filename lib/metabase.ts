@@ -45,13 +45,14 @@ export function toPath(u: string): string | null {
 
 export async function fetchLeads(): Promise<LeadCounts | null> {
   const base = process.env.METABASE_URL?.replace(/\/+$/, "");
-  const key = process.env.METABASE_API_KEY;
   const card = process.env.METABASE_CARD_ID;
-  if (!base || !key || !card) return null;
+  if (!base || !card) return null;
+  const auth = await authHeader(base);
+  if (!auth) return null;
 
   const res = await fetch(`${base}/api/card/${card}/query/json`, {
     method: "POST",
-    headers: { "x-api-key": key, "Content-Type": "application/json" },
+    headers: { ...auth, "Content-Type": "application/json" },
     cache: "no-store",
   });
   if (!res.ok) throw new Error(`Metabase ${res.status}: ${(await res.text()).slice(0, 300)}`);
@@ -79,4 +80,23 @@ export async function fetchLeads(): Promise<LeadCounts | null> {
     out.set(path, byMonth);
   }
   return out;
+}
+
+// An admin-issued API key, or else a regular user's login (no admin rights needed).
+async function authHeader(base: string): Promise<Record<string, string> | null> {
+  if (process.env.METABASE_API_KEY) return { "x-api-key": process.env.METABASE_API_KEY };
+  const username = process.env.METABASE_USERNAME;
+  const password = process.env.METABASE_PASSWORD;
+  if (!username || !password) return null;
+  const res = await fetch(`${base}/api/session`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username, password }),
+    cache: "no-store",
+  });
+  if (!res.ok) {
+    throw new Error(`Metabase login failed (${res.status}). If your Metabase only allows Google sign-in, ask an admin for an API key instead.`);
+  }
+  const { id } = (await res.json()) as { id: string };
+  return { "X-Metabase-Session": id };
 }
