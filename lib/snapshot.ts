@@ -1,7 +1,6 @@
 import { unstable_cache } from "next/cache";
 import { query, latestDate } from "./gsc";
 import { readPages } from "./sheet";
-import { fetchLeads, toPath } from "./metabase";
 import type { Month, MonthMetrics, Row, Snapshot } from "./types";
 import sample from "./sample.json";
 
@@ -81,29 +80,23 @@ async function buildLive(): Promise<Snapshot> {
     }
   }
 
-  let leads = null;
-  try {
-    leads = await fetchLeads();
-    if (!leads) warnings.push("Metabase is not configured, so leads and onboardings show as 0.");
-  } catch (e) {
-    warnings.push(`Metabase refresh failed: ${(e as Error).message}`);
-  }
+  // Leads and onboardings are written to the sheet by lib/sheet-sync.ts, not exposed on this public page.
+  warnings.push("Leads and onboardings are not shown on this page. They are updated daily in the sheet.");
 
   const rows: Row[] = pages.map((pg) => {
     const u = normUrl(pg.url);
-    const path = toPath(u) ?? u;
+    const path = new URL(u).pathname.replace(/\/+$/, "") || "/";
     const m: Record<string, MonthMetrics> = {};
     for (const mo of months) {
       const ps = pageStats.get(`${mo.k}|${u}`);
       const ks = pg.kw ? kwStats.get(`${mo.k}|${u}|${normQ(pg.kw)}`) : undefined;
-      const ld = leads?.get(path)?.get(mo.k);
       m[mo.k] = {
         c: ps?.c ?? 0,
         i: ps?.i ?? 0,
         p: ps ? round1(ps.p) : null,
         kp: ks && ks.i ? round1(ks.w / ks.i) : null,
-        l: ld?.l ?? 0,
-        o: ld?.o ?? 0,
+        l: 0,
+        o: 0,
       };
     }
     return { url: path, type: pg.type, kw: pg.kw, m };

@@ -2,7 +2,7 @@ import { GoogleAuth } from "google-auth-library";
 
 const SCOPES = [
   "https://www.googleapis.com/auth/webmasters.readonly",
-  "https://www.googleapis.com/auth/spreadsheets.readonly",
+  "https://www.googleapis.com/auth/spreadsheets",
 ];
 
 let auth: GoogleAuth | null = null;
