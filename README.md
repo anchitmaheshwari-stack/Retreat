@@ -1,36 +1,28 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Content Retreat SEO dashboard
 
-## Getting Started
+Next.js app on Vercel. Once a day (07:00 IST) a Vercel Cron job calls `/api/refresh`, which:
 
-First, run the development server:
+1. Reads the page list (URL, Page Type, Primary Keyword) from `Sheet1` of the Content Retreat Performance sheet.
+2. Pulls clicks, impressions and average position per URL, and the position of each page's primary keyword, from the Search Console API for every month since `START_MONTH`. The current month is marked partial.
+3. Pulls leads and onboardings per landing URL and month from a saved Metabase question.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+The result is cached and served to every visitor. If a refresh fails, the last good data stays up.
+Without Google credentials the app shows bundled sample data (Aug–Sep 2026).
+
+## Setup
+
+1. **Google service account**: in Google Cloud, create a service account, enable the *Google Search Console API* and *Google Sheets API*, and download a JSON key.
+   - Search Console → Settings → Users and permissions → add the service account's `client_email` (Restricted is enough).
+   - Share the sheet with the same email as Viewer.
+2. **Metabase**: Admin → Settings → Authentication → API keys → create a key. Note the saved question's ID (the number in `/question/123-...`).
+   The question needs a landing URL column and a date column, one row per lead (an onboarding flag/count column is optional).
+3. **Vercel**: `vercel link`, then add every variable from `.env.example` with `vercel env add`, and deploy with `vercel deploy --prod`.
+
+Refresh by hand: `curl -H "Authorization: Bearer $CRON_SECRET" https://<your-domain>/api/refresh`
+
+## Local
+
 ```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+cp .env.example .env.local   # fill in values, or leave Google blank for sample data
+npm run dev
+```
