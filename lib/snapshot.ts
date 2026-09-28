@@ -123,13 +123,15 @@ function hasGoogleConfig() {
   return Boolean(process.env.GOOGLE_SERVICE_ACCOUNT_JSON && process.env.SHEET_ID && process.env.GSC_SITE);
 }
 
-export const getSnapshot = unstable_cache(
-  async (): Promise<Snapshot> => {
-    if (!hasGoogleConfig()) {
-      return { ...(sample as unknown as Snapshot), warnings: ["Showing sample data: Google credentials are not configured yet."] };
-    }
-    return buildLive();
-  },
-  ["snapshot-v1"],
-  { tags: [SNAPSHOT_TAG], revalidate: 60 * 60 * 12 },
-);
+const getLiveSnapshot = unstable_cache(buildLive, ["snapshot-v2"], {
+  tags: [SNAPSHOT_TAG],
+  revalidate: 60 * 60 * 12,
+});
+
+// Sample data is never cached, so the dashboard switches to live data as soon as credentials exist.
+export async function getSnapshot(): Promise<Snapshot> {
+  if (!hasGoogleConfig()) {
+    return { ...(sample as unknown as Snapshot), warnings: ["Showing sample data: Google credentials are not configured yet."] };
+  }
+  return getLiveSnapshot();
+}
