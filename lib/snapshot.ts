@@ -119,9 +119,8 @@ async function buildLive(): Promise<Snapshot> {
   };
 }
 
-function hasGoogleConfig() {
-  return Boolean(process.env.GOOGLE_SERVICE_ACCOUNT_JSON && process.env.SHEET_ID && process.env.GSC_SITE);
-}
+const REQUIRED = ["GOOGLE_SERVICE_ACCOUNT_JSON", "SHEET_ID", "GSC_SITE"] as const;
+const missingConfig = () => REQUIRED.filter((k) => !process.env[k]?.trim());
 
 const getLiveSnapshot = unstable_cache(buildLive, ["snapshot-v2"], {
   tags: [SNAPSHOT_TAG],
@@ -130,8 +129,9 @@ const getLiveSnapshot = unstable_cache(buildLive, ["snapshot-v2"], {
 
 // Sample data is never cached, so the dashboard switches to live data as soon as credentials exist.
 export async function getSnapshot(): Promise<Snapshot> {
-  if (!hasGoogleConfig()) {
-    return { ...(sample as unknown as Snapshot), warnings: ["Showing sample data: Google credentials are not configured yet."] };
+  const missing = missingConfig();
+  if (missing.length) {
+    return { ...(sample as unknown as Snapshot), warnings: [`Showing sample data: ${missing.join(", ")} not set in Vercel.`] };
   }
   return getLiveSnapshot();
 }

@@ -84,7 +84,7 @@ export async function fetchLeads(): Promise<LeadCounts | null> {
 
 // An admin-issued API key, or else a regular user's login (no admin rights needed).
 async function authHeader(base: string): Promise<Record<string, string> | null> {
-  if (process.env.METABASE_API_KEY) return { "x-api-key": process.env.METABASE_API_KEY };
+  if (process.env.METABASE_API_KEY?.trim()) return { "x-api-key": process.env.METABASE_API_KEY };
   const username = process.env.METABASE_USERNAME;
   const password = process.env.METABASE_PASSWORD;
   if (!username || !password) return null;
