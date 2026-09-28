@@ -2,6 +2,7 @@ import { unstable_cache } from "next/cache";
 import { query, latestDate } from "./gsc";
 import { readPages } from "./sheet";
 import type { Month, MonthMetrics, Row, Snapshot } from "./types";
+import { fetchLeadRows, normPath, toLeadCounts } from "./metabase";
 import sample from "./sample.json";
 
 export const SNAPSHOT_TAG = "snapshot";
@@ -80,8 +81,15 @@ async function buildLive(): Promise<Snapshot> {
     }
   }
 
-  // Leads and onboardings are written to the sheet by lib/sheet-sync.ts, not exposed on this public page.
-  warnings.push("Leads and onboardings are not shown on this page. They are updated daily in the sheet.");
+  // Leads and onboardings for the tracked URLs only (same SQL as the sheet sync).
+  let leads = null;
+  try {
+    const leadRows = await fetchLeadRows(process.env.START_MONTH || "2026-08");
+    if (leadRows) leads = toLeadCounts(leadRows);
+    else warnings.push("Metabase is not configured, so leads and onboardings show as 0.");
+  } catch (e) {
+    warnings.push(`Leads refresh failed, so leads and onboardings show as 0: ${(e as Error).message}`);
+  }
 
   const rows: Row[] = pages.map((pg) => {
     const u = normUrl(pg.url);
@@ -89,14 +97,15 @@ async function buildLive(): Promise<Snapshot> {
     const m: Record<string, MonthMetrics> = {};
     for (const mo of months) {
       const ps = pageStats.get(`${mo.k}|${u}`);
+      const ld = leads?.get(normPath(u))?.get(mo.k);
       const ks = pg.kw ? kwStats.get(`${mo.k}|${u}|${normQ(pg.kw)}`) : undefined;
       m[mo.k] = {
         c: ps?.c ?? 0,
         i: ps?.i ?? 0,
         p: ps ? round1(ps.p) : null,
         kp: ks && ks.i ? round1(ks.w / ks.i) : null,
-        l: 0,
-        o: 0,
+        l: ld?.l ?? 0,
+        o: ld?.o ?? 0,
       };
     }
     return { url: path, type: pg.type, kw: pg.kw, m };
@@ -115,7 +124,7 @@ async function buildLive(): Promise<Snapshot> {
 const REQUIRED = ["GOOGLE_SERVICE_ACCOUNT_JSON", "SHEET_ID", "GSC_SITE"] as const;
 const missingConfig = () => REQUIRED.filter((k) => !process.env[k]?.trim());
 
-const getLiveSnapshot = unstable_cache(buildLive, ["snapshot-v2"], {
+const getLiveSnapshot = unstable_cache(buildLive, ["snapshot-v3"], {
   tags: [SNAPSHOT_TAG],
   revalidate: 60 * 60 * 12,
 });
